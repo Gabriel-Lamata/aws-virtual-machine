@@ -1,17 +1,17 @@
-name: Terraform Destroy Pipeline
+name: Terraform Pipeline
 
 on:
   push:
     branches:
-    - test   # dispara quando fizer push na branch test
+    - test   # dispara só no branch test
 
 env:
   TERRAFORM_VERSION: 1.13.1
 
 jobs:
 
-  tf-aws-destroy:
-    name: AWS provider - Destroy Infra
+  tf-aws:
+    name: AWS provider
     runs-on: ubuntu-latest
  
     steps:
@@ -35,11 +35,28 @@ jobs:
         aws-session-token    : ${{ secrets.AWS_SESSION_TOKEN }}
         aws-region           : us-east-1
 
-    - name: Step 04 - Terraform Init
-      run : terraform -chdir=./terraform init
+    # --- NOVAS ETAPAS DE VERIFICAÇÃO ---
+    - name: Step 04 - Terraform Format Check
+      run: terraform -chdir=./terraform fmt -check -recursive
 
-    - name: Step 05 - Terraform Validate
+    - name: Step 05 - Checkov Security Scan
+      uses: bridgecrewio/checkov-action@master
+      with:
+        directory: ./terraform
+
+    - name: Step 06 - Terraform Validate (root)
       run : terraform -chdir=./terraform validate
 
-    - name: Step 06 - Terraform Destroy
-      run : terraform -chdir=./terraform destroy -auto-approve
+    - name: Step 06.1 - Terraform Validate (network module)
+      run : terraform -chdir=./terraform/modules/network validate
+    # se quiser validar também o de VM, adiciona outro step igual
+
+    # --- PIPELINE NORMAL ---
+    - name: Step 07 - Terraform Plan
+      run : terraform -chdir=./terraform plan -out tfplan
+
+    - name: Step 08 - Terraform Apply
+      run : terraform -chdir=./terraform apply tfplan
+
+    - name: Step 09 - Terraform Show
+      run : terraform -chdir=./terraform show
