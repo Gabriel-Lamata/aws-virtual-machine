@@ -9,3 +9,9 @@ variable "subnet_cidr" {
 variable "az" {
   default = "us-east-1a"
 }
+
+variable "allowed_ssh_cidr" {
+  description = "Faixa de IPs permitidos para acessar via SSH"
+  type        = list(string)
+  default     = ["0.0.0.0/0"] # Ajuste para o seu IP público depois
+}
