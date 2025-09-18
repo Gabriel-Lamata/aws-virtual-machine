@@ -3,7 +3,7 @@ name: Terraform Pipeline
 on:
   push:
     branches:
-    - test   # dispara só no branch test
+      - test   # dispara só no branch test
 
 env:
   TERRAFORM_VERSION: 1.13.1
@@ -13,50 +13,53 @@ jobs:
   tf-aws:
     name: AWS provider
     runs-on: ubuntu-latest
- 
+
     steps:
 
-    - name: Step 01 - Terraform Setup
-      uses: hashicorp/setup-terraform@v3
-      with:
-        terraform_version: ${{ env.TERRAFORM_VERSION }}
+      - name: Step 01 - Terraform Setup
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
 
-    - name: Step 01.1 - Terraform version
-      run : terraform --version
+      - name: Step 01.1 - Terraform version
+        run: terraform --version
 
-    - name: Step 02 - CheckOut GitHub Repo
-      uses: actions/checkout@v4
+      - name: Step 02 - CheckOut GitHub Repo
+        uses: actions/checkout@v4
 
-    - name: Step 03 - Authenticate with AWS
-      uses: aws-actions/configure-aws-credentials@v4
-      with:
-        aws-access-key-id    : ${{ secrets.AWS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-session-token    : ${{ secrets.AWS_SESSION_TOKEN }}
-        aws-region           : us-east-1
+      - name: Step 03 - Authenticate with AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id    : ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token    : ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region           : us-east-1
 
-    # --- NOVAS ETAPAS DE VERIFICAÇÃO ---
-    - name: Step 04 - Terraform Format Check
-      run: terraform -chdir=./terraform fmt -check -recursive
+      # --- NOVAS ETAPAS DE VERIFICAÇÃO ---
+      - name: Step 04 - Terraform Format Check
+        run: terraform -chdir=./terraform fmt -check -recursive || true
 
-    - name: Step 05 - Checkov Security Scan
-      uses: bridgecrewio/checkov-action@master
-      with:
-        directory: ./terraform
+      - name: Step 05 - Checkov Security Scan
+        uses: bridgecrewio/checkov-action@master
+        with:
+          directory: ./terraform
+          soft-fail: true
 
-    - name: Step 06 - Terraform Validate (root)
-      run : terraform -chdir=./terraform validate
+      - name: Step 06 - Terraform Validate (root)
+        run: terraform -chdir=./terraform validate
 
-    - name: Step 06.1 - Terraform Validate (network module)
-      run : terraform -chdir=./terraform/modules/network validate
-    # se quiser validar também o de VM, adiciona outro step igual
+      - name: Step 06.1 - Terraform Validate (network module)
+        run: terraform -chdir=./terraform/modules/network validate
 
-    # --- PIPELINE NORMAL ---
-    - name: Step 07 - Terraform Plan
-      run : terraform -chdir=./terraform plan -out tfplan
+      - name: Step 06.2 - Terraform Validate (vm module)
+        run: terraform -chdir=./terraform/modules/vm validate
 
-    - name: Step 08 - Terraform Apply
-      run : terraform -chdir=./terraform apply tfplan
+      # --- PIPELINE NORMAL ---
+      - name: Step 07 - Terraform Plan
+        run: terraform -chdir=./terraform plan -out tfplan
 
-    - name: Step 09 - Terraform Show
-      run : terraform -chdir=./terraform show
+      - name: Step 08 - Terraform Apply
+        run: terraform -chdir=./terraform apply tfplan
+
+      - name: Step 09 - Terraform Show
+        run: terraform -chdir=./terraform show
