@@ -1,17 +1,25 @@
-variable "vpc_cidr" {
-  default = "10.0.0.0/16"
+# modules/network/variables.tf - Variáveis do módulo de Network
+
+variable "vpc_cidr_block" {
+  description = "CIDR block para a VPC"
+  type        = string
+  default     = "10.0.0.0/16"
 }
 
-variable "subnet_cidr" {
-  default = "10.0.1.0/24"
+variable "subnet_cidr_block" {
+  description = "CIDR block para a subnet pública"
+  type        = string
+  default     = "10.0.1.0/24"
 }
 
-variable "az" {
-  default = "us-east-1a"
+variable "availability_zone" {
+  description = "Availability Zone para os recursos"
+  type        = string
+  default     = "us-east-1a"
 }
 
 variable "allowed_ssh_cidr" {
-  description = "Faixa de IPs permitidos para acessar via SSH"
-  type        = list(string)
-  default     = ["0.0.0.0/0"] # Ajuste para o seu IP público depois
+  description = "CIDR block allowed for SSH access (use your IP/32 for security)"
+  type        = string
+  default     = ""
 }

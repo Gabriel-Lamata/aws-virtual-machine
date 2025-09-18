@@ -1,15 +1,24 @@
+# main.tf - Arquivo principal que chama os módulos
+
+# Módulo de Network
 module "network" {
-  source           = "./modules/network"
-  vpc_cidr         = "10.0.0.0/16"
-  subnet_cidr      = "10.0.1.0/24"
-  az               = "us-east-1a"
-  allowed_ssh_cidr = ["0.0.0.0/0"] # Troque pelo seu IP
+  source = "./modules/network"
+  
+  vpc_cidr_block     = "10.0.0.0/16"
+  subnet_cidr_block  = "10.0.1.0/24"
+  availability_zone  = "us-east-1a"
+  # allowed_ssh_cidr   = "YOUR.IP.HERE/32" # Descomente e adicione seu IP para habilitar SSH
 }
 
+# Módulo de VM
 module "vm" {
-  source        = "./modules/vm"
-  subnet_id     = module.network.subnet_id
-  sg_id         = module.network.sg_id
-  ami           = "ami-0c101f26f147fa7fd"
+  source = "./modules/vm"
+  
+  # Passando outputs do módulo network como inputs
+  vpc_id            = module.network.vpc_id
+  subnet_id         = module.network.subnet_id
+  security_group_id = module.network.security_group_id
+  
+  ami_id        = "ami-0c101f26f147fa7fd"
   instance_type = "t2.micro"
 }

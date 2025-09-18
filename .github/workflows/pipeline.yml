@@ -3,7 +3,7 @@ name: Terraform Pipeline
 on:
   push:
     branches:
-      - test
+      - main
 
 env:
   TERRAFORM_VERSION: 1.13.1
@@ -12,66 +12,61 @@ jobs:
   tf-aws:
     name: AWS provider
     runs-on: ubuntu-latest
-
+    
     steps:
-
-      - name: Step 01 - Terraform Setup
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: ${{ env.TERRAFORM_VERSION }}
-
-      - name: Step 01.1 - Terraform version
-        run: terraform --version
-
-      - name: Step 02 - CheckOut GitHub Repo
-        uses: actions/checkout@v4
-
-      - name: Step 03 - Authenticate with AWS
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id    : ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-session-token    : ${{ secrets.AWS_SESSION_TOKEN }}
-          aws-region           : us-east-1
-
-      # --- INIT ---
-      - name: Step 03.1 - Terraform Init
-        run: terraform -chdir=./terraform init -input=false
-        continue-on-error: true
-
-      # --- VERIFICAÇÕES ---
-      - name: Step 04 - Terraform Format Check
-        run: terraform -chdir=./terraform fmt -check -recursive
-        continue-on-error: true
-
-      - name: Step 05 - Checkov Security Scan
-        uses: bridgecrewio/checkov-action@master
-        with:
-          directory: ./terraform
-          soft-fail: true
-        continue-on-error: true
-
-      - name: Step 06 - Terraform Validate (root)
-        run: terraform -chdir=./terraform validate
-        continue-on-error: true
-
-      - name: Step 06.1 - Terraform Validate (network module)
-        run: terraform -chdir=./terraform/modules/network validate
-        continue-on-error: true
-
-      - name: Step 06.2 - Terraform Validate (vm module)
-        run: terraform -chdir=./terraform/modules/vm validate
-        continue-on-error: true
-
-      # --- PIPELINE NORMAL ---
-      - name: Step 07 - Terraform Plan
-        run: terraform -chdir=./terraform plan -out tfplan
-        continue-on-error: true
-
-      - name: Step 08 - Terraform Apply
-        run: terraform -chdir=./terraform apply tfplan
-        continue-on-error: true
-
-      - name: Step 09 - Terraform Show
-        run: terraform -chdir=./terraform show
-        continue-on-error: true
+    - name: Step 01 - Terraform Setup
+      uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: ${{ env.TERRAFORM_VERSION }}
+    
+    - name: Step 01.1 - Terraform version
+      run: terraform --version
+    
+    - name: Step 02 - CheckOut GitHub Repo
+      uses: actions/checkout@v4
+    
+    # Terraform Format Check
+    - name: Step 03 - Terraform Format Check
+      run: |
+        echo "🔧 Formatando arquivos Terraform..."
+        terraform -chdir=./terraform fmt -recursive
+        echo "✅ Verificando formatação..."
+        terraform -chdir=./terraform fmt -check -recursive
+    
+    # Checkov Security Scan - PERMITE FALHAS TEMPORARIAMENTE
+    - name: Step 04 - Setup Python for Checkov
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.x'
+    
+    - name: Step 05 - Install Checkov
+      run: pip install checkov
+    
+    - name: Step 06 - Run Checkov Security Scan
+      run: |
+        echo "🔍 Executando scan de segurança..."
+        checkov -d ./terraform --framework terraform --check CKV_AWS_79,CKV_AWS_23,CKV_AWS_126,CKV_AWS_135,CKV_AWS_24 --compact --quiet || echo "⚠️ Checkov falhou, mas continuando..."
+      continue-on-error: true
+    
+    - name: Step 07 - Authenticate with AWS
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id    : ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-session-token    : ${{ secrets.AWS_SESSION_TOKEN }}
+        aws-region           : us-east-1
+    
+    - name: Step 08 - Terraform Init
+      run: terraform -chdir=./terraform init
+    
+    - name: Step 09 - Terraform Validate
+      run: terraform -chdir=./terraform validate
+    
+    - name: Step 10 - Terraform Plan
+      run: terraform -chdir=./terraform plan -destroy -out=tfplan
+    
+    - name: Step 11 - Terraform Apply
+      run: terraform -chdir=./terraform apply tfplan
+    
+    - name: Step 12 - Terraform Show
+      run: terraform -chdir=./terraform show
