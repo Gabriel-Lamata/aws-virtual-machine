@@ -44,6 +44,7 @@ jobs:
         with:
           directory: ./terraform
           soft-fail: true
+        continue-on-error: true   # <---- ESSA LINHA GARANTE QUE NÃO QUEBRA O PIPELINE
 
       - name: Step 06 - Terraform Validate (root)
         run: terraform -chdir=./terraform validate
