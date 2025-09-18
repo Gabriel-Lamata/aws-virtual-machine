@@ -3,13 +3,12 @@ name: Terraform Pipeline
 on:
   push:
     branches:
-      - test   # dispara só no branch test
+      - test
 
 env:
   TERRAFORM_VERSION: 1.13.1
 
 jobs:
-
   tf-aws:
     name: AWS provider
     runs-on: ubuntu-latest
@@ -40,31 +39,39 @@ jobs:
         run: terraform -chdir=./terraform init -input=false
         continue-on-error: true
 
-      # --- NOVAS ETAPAS DE VERIFICAÇÃO ---
+      # --- VERIFICAÇÕES ---
       - name: Step 04 - Terraform Format Check
-        run: terraform -chdir=./terraform fmt -check -recursive || true
+        run: terraform -chdir=./terraform fmt -check -recursive
+        continue-on-error: true
 
       - name: Step 05 - Checkov Security Scan
         uses: bridgecrewio/checkov-action@master
         with:
           directory: ./terraform
           soft-fail: true
+        continue-on-error: true
 
       - name: Step 06 - Terraform Validate (root)
-        run: terraform -chdir=./terraform validate || true
+        run: terraform -chdir=./terraform validate
+        continue-on-error: true
 
       - name: Step 06.1 - Terraform Validate (network module)
-        run: terraform -chdir=./terraform/modules/network validate || true
+        run: terraform -chdir=./terraform/modules/network validate
+        continue-on-error: true
 
       - name: Step 06.2 - Terraform Validate (vm module)
-        run: terraform -chdir=./terraform/modules/vm validate || true
+        run: terraform -chdir=./terraform/modules/vm validate
+        continue-on-error: true
 
       # --- PIPELINE NORMAL ---
       - name: Step 07 - Terraform Plan
-        run: terraform -chdir=./terraform plan -out tfplan || true
+        run: terraform -chdir=./terraform plan -out tfplan
+        continue-on-error: true
 
       - name: Step 08 - Terraform Apply
-        run: terraform -chdir=./terraform apply tfplan || true
+        run: terraform -chdir=./terraform apply tfplan
+        continue-on-error: true
 
       - name: Step 09 - Terraform Show
-        run: terraform -chdir=./terraform show || true
+        run: terraform -chdir=./terraform show
+        continue-on-error: true
